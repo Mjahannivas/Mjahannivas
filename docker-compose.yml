@@ -1,0 +1,104 @@
+version: '3'
+    
+services:
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  email:
+    image: boeboe/boutique-emailservice
+    env_file:
+      - ./microservices/emailservice/env.list
+    ports:
+      - "3400:3400"
+
+  checkout:
+    image: boeboe/boutique-checkoutservice
+    env_file:
+      - ./microservices/checkoutservice/env.list
+    ports:
+      - "3200:3200"
+    depends_on:
+      - productcatalog
+      - shipping
+      - payment
+      - email
+      - currency
+      - cart
+
+  recommendation:
+    image: boeboe/boutique-recommendationservice
+    env_file:
+      - ./microservices/recommendationservice/env.list
+    ports:
+      - "3900:3900"
+    depends_on:
+      - productcatalog
+
+  frontend:
+    image: boeboe/boutique-frontend:v0.2.0
+    env_file:
+      - ./microservices/frontend/env.list
+    ports:
+      - "3500:3500"
+    depends_on:
+      - productcatalog
+      - currency
+      - cart
+      - recommendation
+      - shipping
+      - checkout
+      - ad
+
+  payment:
+    image: boeboe/boutique-paymentservice
+    env_file:
+      - ./microservices/paymentservice/env.list
+    ports:
+      - "3700:3700"
+
+  productcatalog:
+    image: boeboe/boutique-productcatalogservice
+    env_file:
+      - ./microservices/productcatalogservice/env.list
+    ports:
+      - "3800:3800"
+
+  cart:
+    image: boeboe/boutique-cartservice
+    env_file:
+      - ./microservices/cartservice/env.list
+    ports:
+      - "3100:3100"
+    depends_on:
+      - redis
+
+  loadgenerator:
+    image: boeboe/boutique-loadgenerator
+    env_file:
+      - ./microservices/loadgenerator/env.list
+    depends_on:
+      - frontend
+
+  currency:
+    image: boeboe/boutique-currencyservice
+    env_file:
+      - ./microservices/currencyservice/env.list
+    ports:
+      - "3300:3300"
+
+  shipping:
+    image: boeboe/boutique-shippingservice
+    env_file:
+      - ./microservices/shippingservice/env.list
+    ports:
+      - "4000:4000"
+
+  ad:
+    image: boeboe/boutique-adservice
+    env_file:
+      - ./microservices/adservice/env.list
+    ports:
+      - "3000:3000"

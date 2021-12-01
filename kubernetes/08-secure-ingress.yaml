@@ -1,0 +1,34 @@
+apiVersion: policy.aspenmesh.io/v1alpha1
+kind: Application
+metadata:
+  name: boutique
+spec:
+  inbound:
+    ports:
+      - number: 3500
+        protocol: HTTP
+        paths:
+          - expose:
+              public: true
+              jwtSecured: false
+            uri:
+              prefix: /
+---
+apiVersion: policy.aspenmesh.io/v1alpha1
+kind: SecureIngress
+metadata:
+  name: boutique
+  annotations:
+    external-dns.alpha.kubernetes.io/target: 10.1.1.5
+spec:
+  domainName: "boutique.aspen-demo.org"
+  jwt:
+    - issuer: "admin@boutique.aspen-demo.org"
+      jwksUri: "https://10.1.1.4:4444/.well-known/jwks.json"
+  exposedApplications:
+    - applicationReference:
+        name: boutique
+        namespace: boutique
+      serviceReference:
+        name: frontend
+        namespace: boutique

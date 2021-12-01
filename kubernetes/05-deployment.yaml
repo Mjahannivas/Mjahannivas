@@ -1,0 +1,627 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email
+  labels:
+    app: email
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: email
+  template:
+    metadata:
+      labels:
+        app: email
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-email
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: email
+          image: boeboe/boutique-emailservice:v0.2.0
+          ports:
+            - name: email-port
+              containerPort: 3400
+          env:
+            - name: PORT
+              value: "3400"
+            - name: DISABLE_TRACING
+              value: "1"
+            - name: DISABLE_PROFILER
+              value: "1"
+          readinessProbe:
+            periodSeconds: 5
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3400"]
+          livenessProbe:
+            periodSeconds: 5
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3400"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  labels:
+    app: checkout
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-checkout
+      containers:
+        - name: checkout
+          image: boeboe/boutique-checkoutservice:v0.2.0
+          ports:
+            - name: checkout-port
+              containerPort: 3200
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3200"]
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3200"]
+          env:
+            - name: PORT
+              value: "3200"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalog:3800
+            - name: SHIPPING_SERVICE_ADDR
+              value: shipping:4000
+            - name: PAYMENT_SERVICE_ADDR
+              value: payment:3700
+            - name: EMAIL_SERVICE_ADDR
+              value: email:3400
+            - name: CURRENCY_SERVICE_ADDR
+              value: currency:3300
+            - name: CART_SERVICE_ADDR
+              value: cart:3100
+            - name: DISABLE_STATS
+              value: "1"
+            - name: DISABLE_TRACING
+              value: "1"
+            - name: DISABLE_PROFILER
+              value: "1"
+            # - name: JAEGER_SERVICE_ADDR
+            #   value: "jaeger-collector:14268"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation
+  labels:
+    app: recommendation
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommendation
+  template:
+    metadata:
+      labels:
+        app: recommendation
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-recommendation
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: recommendation
+          image: boeboe/boutique-recommendationservice:v0.2.0
+          ports:
+            - name: recom-port
+              containerPort: 3900
+          readinessProbe:
+            periodSeconds: 5
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3900"]
+          livenessProbe:
+            periodSeconds: 5
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3900"]
+          env:
+            - name: PORT
+              value: "3900"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalog:3800
+            - name: DISABLE_TRACING
+              value: "1"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: DISABLE_DEBUGGER
+              value: "1"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 220Mi
+            limits:
+              cpu: 200m
+              memory: 450Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        version: v0.2.0
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+    spec:
+      serviceAccountName: boutique-frontend
+      containers:
+        - name: frontend
+          image: boeboe/boutique-frontend:v0.2.0
+          ports:
+            - name: frontend-port
+              containerPort: 3500
+          readinessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: "/_healthz"
+              port: 3500
+              httpHeaders:
+                - name: "Cookie"
+                  value: "shop_session-id=x-readiness-probe"
+          livenessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: "/_healthz"
+              port: 3500
+              httpHeaders:
+                - name: "Cookie"
+                  value: "shop_session-id=x-liveness-probe"
+          env:
+            - name: PORT
+              value: "3500"
+            - name: LISTEN_ADDR
+              value: "0.0.0.0"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: productcatalog:3800
+            - name: CURRENCY_SERVICE_ADDR
+              value: currency:3300
+            - name: CART_SERVICE_ADDR
+              value: cart:3100
+            - name: RECOMMENDATION_SERVICE_ADDR
+              value: recommendation:3900
+            - name: SHIPPING_SERVICE_ADDR
+              value: shipping:4000
+            - name: CHECKOUT_SERVICE_ADDR
+              value: checkout:3200
+            - name: AD_SERVICE_ADDR
+              value: ad:3000
+            - name: ENV_PLATFORM
+              value: "onprem"
+            - name: DISABLE_TRACING
+              value: "1"
+            - name: DISABLE_PROFILER
+              value: "1"
+            # - name: JAEGER_SERVICE_ADDR
+            #   value: "jaeger-collector:14268"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment
+  labels:
+    app: payment
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment
+  template:
+    metadata:
+      labels:
+        app: payment
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-payment
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: payment
+          image: boeboe/boutique-paymentservice:v0.2.0
+          ports:
+            - name: payment-port
+              containerPort: 3700
+          env:
+            - name: PORT
+              value: "3700"
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3700"]
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3700"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: productcatalog
+  labels:
+    app: productcatalog
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: productcatalog
+  template:
+    metadata:
+      labels:
+        app: productcatalog
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-productcatalog
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: productcatalog
+          image: boeboe/boutique-productcatalogservice:v0.2.0
+          ports:
+            - name: product-port
+              containerPort: 3800
+          env:
+            - name: PORT
+              value: "3800"
+            - name: DISABLE_STATS
+              value: "1"
+            - name: DISABLE_TRACING
+              value: "1"
+            - name: DISABLE_PROFILER
+              value: "1"
+            # - name: JAEGER_SERVICE_ADDR
+            #   value: "jaeger-collector:14268"
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3800"]
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3800"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart
+  labels:
+    app: cart
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cart
+  template:
+    metadata:
+      labels:
+        app: cart
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-cart
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: cart
+          image: boeboe/boutique-cartservice:v0.2.0
+          ports:
+            - name: cart-port
+              containerPort: 3100
+          env:
+            - name: PORT
+              value: "3100"
+            - name: REDIS_ADDR
+              value: redis:6379
+            - name: LISTEN_ADDR
+              value: "0.0.0.0"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 128Mi
+          readinessProbe:
+            initialDelaySeconds: 15
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3100", "-rpc-timeout=5s"]
+          livenessProbe:
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3100", "-rpc-timeout=5s"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgenerator
+  labels:
+    app: loadgenerator
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loadgenerator
+  template:
+    metadata:
+      labels:
+        app: loadgenerator
+        version: v0.2.0
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
+    spec:
+      restartPolicy: Always
+      serviceAccountName: boutique-loadgenerator
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: loadgenerator
+          image: boeboe/boutique-loadgenerator:v0.2.0
+          env:
+            - name: FRONTEND_ADDR
+              value: frontend:3500
+            - name: USERS
+              value: "10"
+          resources:
+            requests:
+              cpu: 300m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: currency
+  labels:
+    app: currency
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: currency
+  template:
+    metadata:
+      labels:
+        app: currency
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-currency
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: currency
+          image: boeboe/boutique-currencyservice:v0.2.0
+          ports:
+            - name: currency-port
+              containerPort: 3300
+          env:
+            - name: PORT
+              value: "3300"
+            - name: DISABLE_TRACING
+              value: "1"
+            - name: DISABLE_PROFILER
+              value: "1"
+            - name: DISABLE_DEBUGGER
+              value: "1"
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3300"]
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3300"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping
+  labels:
+    app: shipping
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shipping
+  template:
+    metadata:
+      labels:
+        app: shipping
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-shipping
+      containers:
+        - name: shipping
+          image: boeboe/boutique-shippingservice:v0.2.0
+          ports:
+            - name: shipping-port
+              containerPort: 4000
+          env:
+            - name: PORT
+              value: "4000"
+            - name: DISABLE_STATS
+              value: "1"
+            - name: DISABLE_TRACING
+              value: "1"
+            - name: DISABLE_PROFILER
+              value: "1"
+            # - name: JAEGER_SERVICE_ADDR
+            #   value: jaeger-collector:14268
+          readinessProbe:
+            periodSeconds: 5
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:4000"]
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:4000"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        version: latest
+    spec:
+      serviceAccountName: boutique-redis
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - name: redis-port
+              containerPort: 6379
+          readinessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 6379
+          livenessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 6379
+          volumeMounts:
+            - mountPath: /data
+              name: redis-data
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 125m
+            requests:
+              cpu: 70m
+              memory: 200Mi
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ad
+  labels:
+    app: ad
+    version: v0.2.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ad
+  template:
+    metadata:
+      labels:
+        app: ad
+        version: v0.2.0
+    spec:
+      serviceAccountName: boutique-ad
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: ad
+          image: boeboe/boutique-adservice:v0.2.0
+          ports:
+            - name: ad-port
+              containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: DISABLE_STATS
+              value: "1"
+            - name: DISABLE_TRACING
+              value: "1"
+            # - name: JAEGER_SERVICE_ADDR
+            #   value: jaeger-collector:14268
+          resources:
+            requests:
+              cpu: 200m
+              memory: 180Mi
+            limits:
+              cpu: 300m
+              memory: 300Mi
+          readinessProbe:
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3000"]
+          livenessProbe:
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:3000"]
+---

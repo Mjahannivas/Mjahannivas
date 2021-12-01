@@ -1,0 +1,165 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: email
+  labels:
+    app: email
+    version: v0.2.0
+spec:
+  selector:
+    app: email
+  ports:
+    - name: grpc-email
+      port: 3400
+      targetPort: email-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout
+  labels:
+    app: checkout
+    version: v0.2.0
+spec:
+  selector:
+    app: checkout
+  ports:
+  - name: grpc-checkout
+    port: 3200
+    targetPort: checkout-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation
+  labels:
+    app: recommendation
+    version: v0.2.0
+spec:
+  selector:
+    app: recommendation
+  ports:
+  - name: grpc-recommendation
+    port: 3900
+    targetPort: recom-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+    version: v0.2.0
+spec:
+  selector:
+    app: frontend
+  ports:
+  - name: http-frontend
+    port: 3500
+    targetPort: frontend-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  labels:
+    app: payment
+    version: v0.2.0
+spec:
+  selector:
+    app: payment
+  ports:
+  - name: grpc-payment
+    port: 3700
+    targetPort: payment-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: productcatalog
+  labels:
+    app: productcatalog
+    version: v0.2.0
+spec:
+  selector:
+    app: productcatalog
+  ports:
+  - name: grpc-productcatalog
+    port: 3800
+    targetPort: product-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart
+  labels:
+    app: cart
+    version: v0.2.0
+spec:
+  selector:
+    app: cart
+  ports:
+  - name: grpc-cart
+    port: 3100
+    targetPort: cart-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: currency
+  labels:
+    app: currency
+    version: v0.2.0
+spec:
+  selector:
+    app: currency
+  ports:
+  - name: grpc-currency
+    port: 3300
+    targetPort: currency-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipping
+  labels:
+    app: shipping
+    version: v0.2.0
+spec:
+  selector:
+    app: shipping
+  ports:
+  - name: grpc-shipping
+    port: 4000
+    targetPort: shipping-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    app: redis
+    version: latest
+spec:
+  selector:
+    app: redis
+  ports:
+  - name: redis-db
+    port: 6379
+    targetPort: redis-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ad
+  labels:
+    app: ad
+    version: v0.2.0
+spec:
+  selector:
+    app: ad
+  ports:
+  - name: grpc-ad
+    port: 3000
+    targetPort: ad-port
